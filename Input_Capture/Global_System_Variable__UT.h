@@ -2,6 +2,7 @@
 #define __Global_System_Variable__UT__H
 
 #include "Input_Capture_Simulation.h"
+#include <stdint.h>
 
 /*******************************************************************************************/
 //                             		Math_Formula_Define                                    //
@@ -59,7 +60,7 @@
 /*******************************************************************************************/
 #define System_Clock      16000000uL
 #define System_Extern_Osi 16000000uL
-#define INT16_MAX 		  65535
+
 
 #define On 1
 #define Off 0
@@ -254,11 +255,14 @@ typedef struct
 //                                         Testing                                         //
 /*******************************************************************************************/
 #define Signal_Count 30
+#define Dead_Band_Count 30
 
 typedef struct 
 {
     uint16_t Signal_Period [Signal_Count];
     uint16_t Signal_Width  [Signal_Count];
+	uint16_t Dead_Band_Signal [Dead_Band_Count];
+
     uint16_t ICP_Counter;
     uint8_t  Signal_Level;
     uint8_t  Signal_Interrupt_Flag;
@@ -271,7 +275,25 @@ typedef struct
     uint16_t Capture_Width  [Signal_Count];
 
     uint8_t  PPM_State[Signal_Count];
-    uint8_t  PPM_State_Count;
+    uint16_t  PPM_State_Count;
 
 }Signal_Group;
+
+typedef struct
+{
+	uint16_t Signal_Pulse;
+	uint16_t Signal_Period;
+	uint8_t  Signal_Flag;
+	uint8_t  Signal_Level;
+
+	uint16_t Count;
+	uint16_t PPM_Mode;
+
+}Single_Signal;
+
+typedef struct
+{
+	uint16_t GUI_PPM[3];
+}GUI;
+
 #endif

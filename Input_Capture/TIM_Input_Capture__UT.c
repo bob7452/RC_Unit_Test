@@ -64,6 +64,13 @@ void PPM_Capture_Parameters_Init(sEscParas_t* EscConfig,System_Flag *Sys_Flag,Si
 	// #endif	
 }
 
+void GUI_Cofficient_GeT(GUI* gui)
+{
+	gui->GUI_PPM[0]= GUI_Capture_Max;
+	gui->GUI_PPM[1]= GUI_Capture_Mid;
+	gui->GUI_PPM[2]= GUI_Capture_Min;
+}
+
 void TIM_Input_Capture_Interrupt_Fnct(System_Flag * Sys_Flag,Signal_Group * Test_Signal)
 {
 	uint8_t GPIO_Voltage_LeveL = Test_Signal->Signal_Level;

@@ -164,6 +164,7 @@
 void PPM_Capture_Parameters_Init(sEscParas_t* EscConfig,System_Flag *Sys_Flag,Signal_Group* Signal);
 void TIM_Input_Capture_Interrupt_Fnct(System_Flag * Sys_Flag,Signal_Group * Test_Signal);
 void PPM_Process_Fnct(System_Flag *Sys_Flag,Cmd_Group * Cmd,Signal_Group* Signal);
+void GUI_Cofficient_GeT(GUI* gui);
 
 
 /*******************************************************************************************/
