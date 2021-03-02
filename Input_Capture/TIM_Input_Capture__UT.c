@@ -119,6 +119,53 @@ void TIM_Input_Capture_Interrupt_Fnct(System_Flag * Sys_Flag,Signal_Group * Test
     }		       
 } 
 
+void TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Signal * Signal)
+{
+	uint8_t GPIO_Voltage_LeveL = Signal->Signal_Level;
+	static uint8_t Width_Counter  = 0;
+	static uint8_t Period_Counter = 0;
+
+    if (((Sys_Flag->ICP_Flag & ICP_Initial_Finish) == false) && (GPIO_Voltage_LeveL))
+	{
+		#if ((PPM_Filter-Muti_Mode_Compile)>0)
+			Sys_Flag->ICP_Flag 	   			   |= ICP_Initial_Finish;
+			PPM_Filter(&Sys_Flag,&Sys_Cnt,GPIO_Voltage_Level);
+			PPM_Group.Capture_Pulse_Width[0]	= PPM_Group.Capture_Mid;
+		#else
+			Sys_Flag->ICP_Flag 	   			   |= ICP_Initial_Finish;
+			PPM_Group.Capture_Raising_Edge[1] 	= Signal->Count;
+			PPM_Group.Capture_Both_Edge[0] 	  	= PPM_Group.Capture_Raising_Edge[1];
+			PPM_Group.Capture_Pulse_Width[0]	= PPM_Group.CaptureMid;
+		#endif
+        return;
+	}
+
+	if ((Sys_Flag->ICP_Flag & ICP_Initial_Finish) == true)
+	{	
+		#if ((PPM_Filter-Muti_Mode_Compile)>0)
+			PPM_Filter(&Sys_Flag,&Sys_Cnt,GPIO_Voltage_Level);
+		#else
+
+		if(GPIO_Voltage_LeveL==1) //Rasing Edge
+		{
+			Sys_Flag->ICP_Flag 	 |= ICP_Period_Finish;
+            PPM_Group.Capture_Raising_Edge[0] = Signal->Count;
+			PPM_Group.Capture_Both_Edge[0] 	  = PPM_Group.Capture_Raising_Edge[0];
+            PPM_Group.Capture_Period 	  	  = (uint16_t)(PPM_Group.Capture_Raising_Edge[0] -PPM_Group.Capture_Raising_Edge[1]); //us
+			PPM_Group.Capture_Raising_Edge[1] = PPM_Group.Capture_Raising_Edge[0];
+		}
+    	else //Falling Edge
+        {
+			Sys_Flag->ICP_Flag 	  |= ICP_Pusle_Width_Finish;
+        	PPM_Group.Capture_Both_Edge[1] 	   = Signal->Count;
+            PPM_Group.Capture_Pulse_Width[1]   = PPM_Group.Capture_Pulse_Width[0];
+            PPM_Group.Capture_Pulse_Width[0]   = (uint16_t)(PPM_Group.Capture_Both_Edge[1] - PPM_Group.Capture_Both_Edge[0]);
+        }
+
+		#endif
+    }		       
+} 
+
 
 void PPM_Process_Fnct(System_Flag *Sys_Flag,Cmd_Group * Cmd,Signal_Group* Signal)
 {

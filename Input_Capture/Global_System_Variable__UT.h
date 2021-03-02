@@ -283,9 +283,8 @@ typedef struct
 {
 	uint16_t Signal_Pulse;
 	uint16_t Signal_Period;
-	uint8_t  Signal_Flag;
 	uint8_t  Signal_Level;
-
+	uint8_t  Flag;
 	uint16_t Count;
 	uint16_t PPM_Mode;
 

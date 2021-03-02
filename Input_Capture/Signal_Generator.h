@@ -10,7 +10,7 @@ void Random_Signal (Signal_Group* Signal);
 void Random_Signal_Single(Single_Signal * Signal,GUI *gui);
 void Signal_Interrupt (Signal_Group * Test_Signal);
 uint8_t Nosie_Gen(Single_Signal * Input_Signal);
-uint8_t Signal_Interrupt_Single (Single_Signal * Input_Signal,Single_Signal* Output_Signal);
+int8_t Signal_Interrupt_Single (Single_Signal * Input_Signal,Single_Signal* Output_Signal);
 
 
 #endif

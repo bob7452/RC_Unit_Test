@@ -12,8 +12,10 @@
 void printf_fnct(Signal_Group* Test_Signal);
 
 #if (Dead_Band_Fnct==On)
-    uint16_t Hold_On_Count = 0;
+    uint16_t Hold_On_Count   = 0;
+    int8_t   Hold_Flag       = 0;
 #endif
+    int8_t Signal_Order      = 0;
 
 int main (int argc,char* argv[])
 {
@@ -30,6 +32,8 @@ int main (int argc,char* argv[])
     memset(&cmd,0,sizeof(cmd));
 
     Single_Signal Input_Signal,Output_Signal;
+    memset(&Input_Signal,0,sizeof(Input_Signal));
+    memset(&Output_Signal,0,sizeof(Output_Signal));
 
     GUI gui;
 
@@ -37,9 +41,38 @@ int main (int argc,char* argv[])
     GUI_Cofficient_GeT(&gui);
 
     //Random_Signal(&Test_Signal);
-    Random_Signal_Single(&Input_Signal,&gui);
-    printf("Period : %d\t ; Pulse : %d\t ; PPM_Mode : %d\n",Input_Signal.Signal_Period,Input_Signal.Signal_Pulse,Input_Signal.PPM_Mode);
+    
+    //Random_Signal_Single(&Input_Signal, &gui);
 
+     while(1)
+     {
+        #if (Dead_Band_Fnct==On)
+
+        if(Hold_On_Count == 0)
+        {
+            Random_Signal_Single(&Input_Signal,&gui);
+            Hold_On_Count = Hold_Count;
+        }
+        
+        Hold_Flag=Signal_Interrupt_Single(&Input_Signal,&Output_Signal);
+        
+        if(Hold_Flag == -1)
+            Hold_On_Count--;
+
+        if(Output_Signal.Flag)
+        {
+            TIM_Input_Capture_Interrupt_Fnct_Single(&Sys_Flag,&Output_Signal);
+            Output_Signal.Flag = 0;
+
+            if((Sys_Flag.ICP_Flag & ICP_Period_Finish)>>1)
+            {
+                Sys_Flag.ICP_Flag &= (~ICP_Period_Finish);
+                //PPM_Process_Fnct(&Sys_Flag,&cmd,&Input_Signal);
+            }
+        }
+
+        #endif
+     }
 
     // while (1)
     // {

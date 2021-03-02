@@ -181,7 +181,7 @@ void Signal_Interrupt (Signal_Group * Test_Signal)
     ICP_Clock++;
 }
 
-uint8_t Signal_Interrupt_Single (Single_Signal * Input_Signal,Single_Signal* Output_Signal)
+int8_t Signal_Interrupt_Single (Single_Signal * Input_Signal,Single_Signal* Output_Signal)
 {
     static unsigned short int      ICP_Clock    =  0;
     static int8_t                  Signal_Order = -1;
@@ -193,58 +193,97 @@ uint8_t Signal_Interrupt_Single (Single_Signal * Input_Signal,Single_Signal* Out
         Signal_Order                    = 0;
         System_Count                    = 0;
         Input_Signal->Signal_Level      = 1;
-        Output_Signal->Signal_Flag      = 1;
         Output_Signal->Count            = ICP_Clock;
         Output_Signal->Signal_Level     = 1; 
+        Output_Signal->Flag             = 1;
+        return Signal_Order;
     }
+
     #if (Signal_Noise == On)
+
     else
     {
       Nosie_Status =  Nosie_Gen((Single_Signal *) Input_Signal);
     }
-    #endif
 
     if((Input_Signal->Signal_Level==0 && Nosie_Status==0) || (System_Count == Input_Signal->Signal_Pulse))
     {
-        Output_Signal->Signal_Flag      = 1;
+        if(System_Count == Input_Signal->Signal_Pulse)
+        {
+            Output_Signal->Count            = ICP_Clock;
+            Output_Signal->Signal_Level     = 0;
+            Output_Signal->Flag             = 1;
+        }
+
+        Input_Signal->Signal_Level      = 1;
         Output_Signal->Count            = ICP_Clock;
-        Output_Signal->Signal_Level     = 0;
+        Output_Signal->Signal_Level     = 1;
+        Output_Signal->Flag             = 1;
     }
 
     if((Input_Signal->Signal_Level==1 && Nosie_Status==1) || (System_Count == Input_Signal->Signal_Period))
     {
-        Output_Signal->Signal_Flag      = 2;
-        Output_Signal->Count            = ICP_Clock;
-        Output_Signal->Signal_Level     = 1;
 
         if(System_Count == Input_Signal->Signal_Period)
-            Signal_Order                =-1;
+        {
+            Signal_Order                    =-1;
+            Output_Signal->Count            = ICP_Clock;
+            Output_Signal->Signal_Level     = 1;
+            Output_Signal->Flag             = 1;
+            return Signal_Order;
+        }
+
+        Input_Signal->Signal_Level      = 0;
+        Output_Signal->Count            = ICP_Clock;
+        Output_Signal->Signal_Level     = 0;
+        Output_Signal->Flag             = 1;
     }
+
+    #else
+
+    if(System_Count == Input_Signal->Signal_Pulse)
+    {
+        Output_Signal->Count            = ICP_Clock;
+        Output_Signal->Signal_Level     = 0;
+        Output_Signal->Flag             = 1;
+    }
+
+    if(System_Count == Input_Signal->Signal_Period)
+    {
+        Output_Signal->Count            = ICP_Clock;
+        Output_Signal->Signal_Level     = 1;
+        Output_Signal->Flag             = 1;
+        Signal_Order                    =-1;      
+        return Signal_Order;
+    }
+
+    #endif
 
     ICP_Clock++;
     System_Count++;
-    return Signal_Order;
 }
 
 #if (Signal_Noise==On)
 uint8_t Nosie_Gen(Single_Signal * Input_Signal)
 {
-    static uint8_t                 Noise        =  0;
+    uint8_t                        Noise        =  0;
     static uint8_t                 Nosie_Status =  0;
 
-    Noise  = rand()%2;
+    Noise  = rand()%100;
 
+    if(Noise%10==0)
+        Noise=1;
+
+    if (Nosie_Status == 1)
+    {
+        Nosie_Status = 0;
+        return Nosie_Status;
+    }
+    
     if(Nosie_Status == 0 && Noise ==1)
     {
         Nosie_Status=1;
-        Input_Signal->Signal_Level = 1;
+        return Nosie_Status;
     }
-    else if (Nosie_Status == 1)
-    {
-        Input_Signal->Signal_Level = 0;
-        Nosie_Status = 0;
-    }
-
-    return Nosie_Status;
 }
 #endif
