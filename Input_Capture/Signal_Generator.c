@@ -12,8 +12,6 @@ void Random_Signal(Signal_Group * Signal)
     uint8_t  Real_Step = 0;
     int8_t  bounce = 0;
 
-    srand(time(NULL));
-
     for(int i = 0;i<Signal_Count;i++)
     {      
         while(Signal->Signal_Period[i]<Min_Period || Signal->Signal_Period[i]==Special_Mode_Period_us)
@@ -69,12 +67,14 @@ void Random_Signal_Single(Single_Signal * Signal,GUI *gui)
     uint8_t  Real_Step = 0;
     uint8_t  PPM_Mode  = 0;
     int8_t  bounce = 0;
+    
     static  uint8_t  temp_Status = 0;
     static  uint16_t temp = 1500;
     const   uint16_t top  = 1550;
     const   uint16_t bot  = 1450;
 
-    srand(time(NULL));
+    Signal->Signal_Period=0;
+    Signal->Signal_Pulse =0;
 
     #if (Dead_Band_Fnct == Off && SSR_Signal == On && Special_Signal ==On)
         PPM_Mode = rand()%3;
@@ -86,7 +86,6 @@ void Random_Signal_Single(Single_Signal * Signal,GUI *gui)
         PPM_Mode = 3;
     #endif
 
-    Signal->PPM_Mode = PPM_Mode;
 
     switch (PPM_Mode) 
     {
@@ -96,14 +95,16 @@ void Random_Signal_Single(Single_Signal * Signal,GUI *gui)
 
             while(Signal->Signal_Pulse<gui->GUI_PPM[2])
                 Signal->Signal_Pulse=rand()%max_pusle;
+            Signal->PPM_Mode = PPM_Mode;
         break;
         case 1:
             max_pusle  = SSR_Mode_Pulse_Max_us+1;
-            while(Signal->Signal_Pulse<SSR_Mode_Pulse_Min)
+            while(Signal->Signal_Pulse<SSR_Mode_Pulse_Min_us)
                 Signal->Signal_Pulse=rand()%max_pusle;
 
             while(Signal->Signal_Period<Min_Period || Signal->Signal_Period==Special_Mode_Period_us)
                 Signal->Signal_Period=rand()%max_period;
+            Signal->PPM_Mode = PPM_Mode;
         break;
         case 2:
             max_pusle  = Special_Mode_Pulse_Max_us+1;
@@ -111,20 +112,37 @@ void Random_Signal_Single(Single_Signal * Signal,GUI *gui)
             while(Signal->Signal_Pulse<Special_Mode_Pulse_Min_us)
                 Signal->Signal_Pulse=rand()%max_pusle;
             Signal->Signal_Period= Special_Mode_Period_us;
+            Signal->PPM_Mode = PPM_Mode;
         break;
         case 3:
             Signal->Signal_Period = 40000;
+
             if(temp_Status)
-                Signal->Signal_Pulse  = temp++;
+                ++temp;
             else
-                Signal->Signal_Pulse  = temp--;
+                --temp;
+            Signal->Signal_Pulse  = temp;
 
             if(temp >top)
                 temp_Status =0;
             if (temp<bot)
                 temp_Status =1;
+            Signal->PPM_Mode = 0;
         break;
     }
+
+    if(Signal->Last_PPM_Mode == 0 && Signal->PPM_Mode == 1)
+    {
+        if(Signal->Signal_Pulse > gui->GUI_PPM[2])
+            Signal->PPM_Mode = Signal->Last_PPM_Mode;
+    }
+    else if (Signal->Last_PPM_Mode == 1 && Signal->PPM_Mode == 0)
+    {
+        if(Signal->Signal_Pulse < SSR_Mode_Pulse_Max_us)
+            Signal->PPM_Mode = Signal->Last_PPM_Mode;
+    }
+
+    Signal->Last_PPM_Mode = Signal->PPM_Mode;
 }
 
 void Signal_Interrupt (Signal_Group * Test_Signal)
@@ -187,15 +205,17 @@ int8_t Signal_Interrupt_Single (Single_Signal * Input_Signal,Single_Signal* Outp
     static int8_t                  Signal_Order = -1;
     static unsigned int            System_Count =  0;
     static uint8_t                 Nosie_Status =  0;
-    
+    static uint8_t stop           = 0;
+
     if(Signal_Order==-1)
     {
         Signal_Order                    = 0;
         System_Count                    = 0;
         Input_Signal->Signal_Level      = 1;
         Output_Signal->Count            = ICP_Clock;
-        Output_Signal->Signal_Level     = 1; 
-        Output_Signal->Flag             = 1;
+        Output_Signal->History[0]       = ICP_Clock;
+        Output_Signal->Signal_Level     = 1;
+        Output_Signal->Flag             = 2;
         return Signal_Order;
     }
 
@@ -230,7 +250,7 @@ int8_t Signal_Interrupt_Single (Single_Signal * Input_Signal,Single_Signal* Outp
             Output_Signal->Count            = ICP_Clock;
             Output_Signal->Signal_Level     = 1;
             Output_Signal->Flag             = 1;
-            return Signal_Order;
+            return Signal_Order;  
         }
 
         Input_Signal->Signal_Level      = 0;
@@ -244,6 +264,7 @@ int8_t Signal_Interrupt_Single (Single_Signal * Input_Signal,Single_Signal* Outp
     if(System_Count == Input_Signal->Signal_Pulse)
     {
         Output_Signal->Count            = ICP_Clock;
+        Output_Signal->History[2]       = ICP_Clock;
         Output_Signal->Signal_Level     = 0;
         Output_Signal->Flag             = 1;
     }
@@ -251,16 +272,18 @@ int8_t Signal_Interrupt_Single (Single_Signal * Input_Signal,Single_Signal* Outp
     if(System_Count == Input_Signal->Signal_Period)
     {
         Output_Signal->Count            = ICP_Clock;
+        Output_Signal->History[1]       = ICP_Clock;
         Output_Signal->Signal_Level     = 1;
         Output_Signal->Flag             = 1;
-        Signal_Order                    =-1;      
-        return Signal_Order;
+        Signal_Order                    =-1;
+        return Signal_Order;      
     }
 
     #endif
 
     ICP_Clock++;
     System_Count++;
+    return Signal_Order;
 }
 
 #if (Signal_Noise==On)

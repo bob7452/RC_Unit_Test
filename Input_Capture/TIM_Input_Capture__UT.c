@@ -119,7 +119,7 @@ void TIM_Input_Capture_Interrupt_Fnct(System_Flag * Sys_Flag,Signal_Group * Test
     }		       
 } 
 
-void TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Signal * Signal)
+void  TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Signal * Signal)
 {
 	uint8_t GPIO_Voltage_LeveL = Signal->Signal_Level;
 	static uint8_t Width_Counter  = 0;
@@ -148,7 +148,8 @@ void TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Signa
 
 		if(GPIO_Voltage_LeveL==1) //Rasing Edge
 		{
-			Sys_Flag->ICP_Flag 	 |= ICP_Period_Finish;
+			if(Signal->Flag!=2)
+				Sys_Flag->ICP_Flag 	 |= ICP_Period_Finish;
             PPM_Group.Capture_Raising_Edge[0] = Signal->Count;
 			PPM_Group.Capture_Both_Edge[0] 	  = PPM_Group.Capture_Raising_Edge[0];
             PPM_Group.Capture_Period 	  	  = (uint16_t)(PPM_Group.Capture_Raising_Edge[0] -PPM_Group.Capture_Raising_Edge[1]); //us
@@ -227,6 +228,62 @@ void PPM_Process_Fnct(System_Flag *Sys_Flag,Cmd_Group * Cmd,Signal_Group* Signal
 	Signal->PPM_State_Count++;
 }
 
+
+void PPM_Process_Fnct_Single(System_Flag *Sys_Flag,Cmd_Group * Cmd)
+{
+	// if((PPM_Group.Capture_Pulse_Width[0] >= PPM_Group.Uart_Port_Ms_Lower) && (PPM_Group.Capture_Pulse_Width[0]<=PPM_Group.Uart_Port_Ms_Upper))
+	// 	GUI_Com_Cnt++;
+
+	// if (GUI_Com_Cnt >  3)
+	// {
+	// 	Sys_Flag->Bus_Status_Flag |= Bus_Arbitration;
+	// 	return;
+	// }
+
+	if((PPM_Group.Capture_Pulse_Width[0] >= PPM_Group.CaptureMin) && (PPM_Group.Capture_Pulse_Width[0]<=PPM_Group.CaptureMax) && \
+		((Sys_Flag->Bus_Status_Flag & Bus_Arbitration)>>2)==false)
+	{
+		// GUI_Com_Cnt = 0;
+		// PPM_Group.Capture_Period = Round_Value(PPM_Group.Capture_Period,1000) * Period_Ratio_Signal_to_Control; //Normalize_Cmd_Period (ms)
+
+		#if(Muti_Mode_Compile >=1) 
+			Muti_Range_Detection_Single((Cmd_Group *) Cmd);
+		#endif
+		
+		// #if(Dead_Band_Fnct == On)
+		// 	PPM_Dead_Band_Fnct((System_Flag*) Sys_Flag);
+		// #endif
+
+		// #if (Driving_Mode == Mix)
+		// 	Mix_Function((System_Flag*) Sys_Flag);
+		// #endif
+
+
+		// if (Sys_Flag->Motor_Operation_Status_Flag  == RUN || Sys_Flag->Motor_Operation_Status_Flag == INIT)//if (gtSystStatus == RUN )
+		// {
+		// 	int32_t Angel_Tmp;
+		// 	Target_Angle_Old = Target_Angle;
+		// 	TargetAngle_Smooth = Target_Angle_Old << 5;
+
+		// 	Angel_Tmp = ((int32_t)PPM_Group.Capture_Pulse_Width[0] - (int32_t)PPM_Group.Capture_Mid);
+		// 	Target_Angle = (int16_t)(( Angel_Tmp*(int32_t)Cmd->PPM_Factor)/(int32_t)PPM_Group.Capture_Div);  
+		// 	Target_Angle += Cmd->Vr_Middle_Point;
+
+		// 	#if (Stepping_Mode == On)
+		// 		if(Target_Angle_old != Target_Angle)
+		// 		{
+		// 			if(PPM_Group.Capture_Period >=(PID_Pos_Loop_Time + 1))
+		// 				Cmd->Step_Count = (int32_t)((int32_t)((Target_Angle - Target_Angle_old) << 5)*(PID_Pos_Loop_Time + 1))/(PPM_Group.Capture_Period);
+		// 			else
+		// 				Cmd->Step_Count = 0;
+		// 		}
+		// 		else
+		// 			Cmd->Step_Count = 0;
+		// 	#endif
+		// }						 
+	}
+}
+
 #if(Muti_Mode_Compile >=1) 
 void Muti_Range_Detection(Signal_Group* Signal)
 	{
@@ -242,8 +299,7 @@ void Muti_Range_Detection(Signal_Group* Signal)
 					
 					SSR_Flag = false;
 					PPM_Group.CaptureMid 	= (uint16_t) (Special_Mode_Pulse_Mid_us);
-					PPM_Group.CaptureLimit 	= (uint16_t) (Special_Mode_Pulse_Max_us);	
-					Signal->PPM_State[Signal->PPM_State_Count] = 2;
+					PPM_Group.CaptureLimit 	= (uint16_t) (Special_Mode_Pulse_Max_us);
 				}
 			#endif	
 			
@@ -261,12 +317,10 @@ void Muti_Range_Detection(Signal_Group* Signal)
 					else if (PPM_Group.Capture_Pulse_Width[0]<= SSR_Mode_Pulse_Max_us)	
 					{
 						SSR_Flag = true;
-						Signal->PPM_State[Signal->PPM_State_Count] = 1;
 					}
 					else
 					{
 						SSR_Flag = false;
-						Signal->PPM_State[Signal->PPM_State_Count] = 0;
 					}
 				}
 
@@ -279,6 +333,77 @@ void Muti_Range_Detection(Signal_Group* Signal)
 				{						
 					PPM_Group.CaptureMid  = GUI_Capture_Mid;
 					PPM_Group.CaptureLimit = GUI_Capture_Limit; 
+				}
+				
+			#endif
+			PPM_Group.Capture_Div  =  PPM_Group.CaptureLimit - PPM_Group.CaptureMid ;
+		}
+	}
+#endif
+
+
+#if(Muti_Mode_Compile >=1) 
+void Muti_Range_Detection_Single(Cmd_Group * Cmd)
+	{
+		if(Muti_Mode)
+		{
+			#if (Special_Mode == On) /* 833 Hz */
+				if ((PPM_Group.Capture_Period > (Special_Mode_Period_us-Special_Singal_Threshold)) && \
+					(PPM_Group.Capture_Period < (Special_Mode_Period_us+Special_Singal_Threshold)))
+				{
+					if ((PPM_Group.Capture_Pulse_Width[0]>Special_Mode_Pulse_Max_us) || \
+						(PPM_Group.Capture_Pulse_Width[0]<Special_Mode_Pulse_Min_us))
+						return;
+					
+					SSR_Flag = false;
+					PPM_Group.CaptureMid 	= (uint16_t) (Special_Mode_Pulse_Mid_us);
+					PPM_Group.CaptureLimit 	= (uint16_t) (Special_Mode_Pulse_Max_us);
+					Cmd->PPM_Mode = 2;
+					Cmd->PPM_Period = PPM_Group.Capture_Period;
+					Cmd->PPM_Pulse  = PPM_Group.Capture_Pulse_Width[0];	
+					PPM_Group.Capture_Div  =  PPM_Group.CaptureLimit - PPM_Group.CaptureMid ;
+					return;
+				}
+			#endif	
+			
+			/* 40 Hz ~ 1.66 KHz expect 833 Hz */
+			#if (SSR_Mode == On)
+				if ((PPM_Group.Capture_Period < (Special_Mode_Period_us-Special_Singal_Threshold)) || \
+					(PPM_Group.Capture_Period > (Special_Mode_Period_us+Special_Singal_Threshold)))
+				{	
+					if (PPM_Group.Capture_Pulse_Width[0] <= SSR_Mode_Pulse_Max_us && PPM_Group.Capture_Pulse_Width[0] >= GUI_Capture_Min)
+						SSR_Flag = SSR_Flag;
+					else if (PPM_Group.Capture_Pulse_Width[0]<= SSR_Mode_Pulse_Max_us)	
+					{
+						SSR_Flag = true;
+					}
+					else
+					{
+						SSR_Flag = false;
+					}
+
+					if	((PPM_Group.Capture_Pulse_Width[0] > SSR_Mode_Pulse_Max_us) || \
+						(PPM_Group.Capture_Pulse_Width[0] < SSR_Mode_Pulse_Min_us)) 
+					{
+						SSR_Flag = false;
+					}
+				}
+
+				if(SSR_Flag)
+				{
+					PPM_Group.CaptureMid   = (uint16_t) SSR_Mode_Pulse_Mid_us;
+					PPM_Group.CaptureLimit = (uint16_t) SSR_Mode_Pulse_Max_us;
+					Cmd->PPM_Mode = 1;
+					Cmd->PPM_Period = PPM_Group.Capture_Period;
+					Cmd->PPM_Pulse  = PPM_Group.Capture_Pulse_Width[0];
+				}
+				else
+				{						
+					PPM_Group.CaptureMid  = GUI_Capture_Mid;
+					PPM_Group.CaptureLimit = GUI_Capture_Limit; 
+					Cmd->PPM_Mode = 0;
+					Cmd->PPM_Period = PPM_Group.Capture_Period;
+					Cmd->PPM_Pulse  = PPM_Group.Capture_Pulse_Width[0];
 				}
 				
 			#endif
@@ -470,3 +595,5 @@ void Muti_Range_Detection(Signal_Group* Signal)
 
 // }
 // #endif
+
+

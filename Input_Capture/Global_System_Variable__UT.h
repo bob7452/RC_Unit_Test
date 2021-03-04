@@ -182,10 +182,13 @@ typedef struct
 
  typedef struct 
  {
-	volatile int32_t Target_Cmd;
-	volatile int16_t Vr_Middle_Point;
-	volatile int16_t PPM_Factor;
-	volatile uint8_t Step_Count;
+	volatile int32_t  Target_Cmd;
+	volatile int16_t  Vr_Middle_Point;
+	volatile int16_t  PPM_Factor;
+	volatile uint8_t  Step_Count;
+	volatile uint8_t  PPM_Mode;
+	volatile uint16_t PPM_Period;
+	volatile uint16_t PPM_Pulse;
  }Cmd_Group;
  
 /*******************************************************************************************/
@@ -286,8 +289,10 @@ typedef struct
 	uint8_t  Signal_Level;
 	uint8_t  Flag;
 	uint16_t Count;
-	uint16_t PPM_Mode;
+	uint8_t PPM_Mode;
+	uint8_t Last_PPM_Mode;
 
+	uint16_t History[3];
 }Single_Signal;
 
 typedef struct

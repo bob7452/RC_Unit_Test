@@ -165,6 +165,7 @@ void PPM_Capture_Parameters_Init(sEscParas_t* EscConfig,System_Flag *Sys_Flag,Si
 void TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Signal * Signal);
 void TIM_Input_Capture_Interrupt_Fnct(System_Flag * Sys_Flag,Signal_Group * Test_Signal);
 void PPM_Process_Fnct(System_Flag *Sys_Flag,Cmd_Group * Cmd,Signal_Group* Signal);
+void PPM_Process_Fnct_Single(System_Flag *Sys_Flag,Cmd_Group * Cmd);
 void GUI_Cofficient_GeT(GUI* gui);
 
 
@@ -173,6 +174,7 @@ void GUI_Cofficient_GeT(GUI* gui);
 /*******************************************************************************************/
 #if(Muti_Mode_Compile >=1) 
     void Muti_Range_Detection(Signal_Group* Signal);
+    void Muti_Range_Detection_Single(Cmd_Group * Cmd);
 #endif
 
 /*******************************************************************************************/
