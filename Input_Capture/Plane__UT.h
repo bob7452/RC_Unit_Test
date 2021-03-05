@@ -25,7 +25,7 @@
 #define PPM_Filter Off
 #define PPM_Filter_Cnt 28
 
-#define Dead_Band_Fnct Off
+#define Dead_Band_Fnct On
 
 #define Special_Mode    On
 #define SSR_Mode        On
@@ -74,6 +74,8 @@
 #define Max_Pulse_Width 5000
 #define Min_Pulse_Width 50
 
-#define  Hold_Count    500
+#define  Hold_Count    50
+
+#define  Bounce_Range 1 
 
 #endif

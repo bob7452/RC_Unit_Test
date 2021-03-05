@@ -24,8 +24,6 @@ void printf_fnct(Signal_Group* Test_Signal);
 
 int main (int argc,char* argv[])
 {
-
-    
     sEscParas_t    EscConfig;
     Parameter_Initial(&EscConfig);
     
@@ -38,9 +36,10 @@ int main (int argc,char* argv[])
     Cmd_Group Cmd;
     memset(&Cmd,0,sizeof(Cmd));
 
-    Single_Signal Input_Signal,Output_Signal;
+    Single_Signal Input_Signal,Output_Signal,UnBounce_Signal;
     memset(&Input_Signal,0,sizeof(Input_Signal));
     memset(&Output_Signal,0,sizeof(Output_Signal));
+    memset(&UnBounce_Signal,0,sizeof(UnBounce_Signal));
 
     GUI gui;
 
@@ -50,8 +49,10 @@ int main (int argc,char* argv[])
     srand(time(NULL));
 
     Random_Signal_Single(&Input_Signal,&gui);
+    UnBounce_Signal = Input_Signal;
+    printf("Input Period : %d\t ; Input Pulse : %d\n",UnBounce_Signal.Signal_Period,UnBounce_Signal.Signal_Pulse);
 
-    Signal_Order=Signal_Interrupt_Single(&Input_Signal,&Output_Signal); //0
+    Signal_Order=Signal_Interrupt_Single(&Input_Signal,&Output_Signal); 
 
     if(Output_Signal.Flag)
     {
@@ -69,27 +70,57 @@ int main (int argc,char* argv[])
             Output_Signal.Flag=0;
         }
 
-        if(((Sys_Flag.ICP_Flag & ICP_Period_Finish)>>1)==1)
+        if(((Sys_Flag.ICP_Flag & ICP_Period_Finish)>>1)==1) 
         {
             Sys_Flag.ICP_Flag &=(~ICP_Period_Finish);
             PPM_Process_Fnct_Single(&Sys_Flag,&Cmd);
-            print_cnt++;
 
-            if(Cmd.PPM_Period != Input_Signal.Signal_Period || Cmd.PPM_Pulse != Input_Signal.Signal_Pulse || Cmd.PPM_Mode != Input_Signal.PPM_Mode ) //
+            // if(!(Cmd.PPM_Period != UnBounce_Signal.Signal_Period || Cmd.PPM_Pulse != UnBounce_Signal.Signal_Pulse || Cmd.PPM_Mode != UnBounce_Signal.PPM_Mode ))
+            // {
+            //     printf("Input Period : %d\t ; Input Pulse : %d\t ; Input PPM Mode : %d\t ; Input Last PPM Mode : %d\n",UnBounce_Signal.Signal_Period,UnBounce_Signal.Signal_Pulse,UnBounce_Signal.PPM_Mode,UnBounce_Signal.Last_PPM_Mode);
+            //     printf("Period : %d\t ; Pulse : %d\t ; PPM Mode : %d\n",Cmd.PPM_Period,Cmd.PPM_Pulse,Cmd.PPM_Mode);
+            //     printf("Count[0]  : %d\t ; Count[1] : %d\t ; Count[2] : %d\n",Output_Signal.History[0],Output_Signal.History[2],Output_Signal.History[1]);
+            // }
+            if(Cmd.PPM_Period != UnBounce_Signal.Signal_Period || Cmd.PPM_Pulse != UnBounce_Signal.Signal_Pulse || Cmd.PPM_Mode != UnBounce_Signal.PPM_Mode ) //
             {
-                PPM_Process_Fnct_Single(&Sys_Flag,&Cmd);
-                printf("Input Period : %d\t ; Input Pulse : %d\t ; Input PPM Mode : %d\t ; Input Last PPM Mode : %d\n",Input_Signal.Signal_Period,Input_Signal.Signal_Pulse,Input_Signal.PPM_Mode,Input_Signal.Last_PPM_Mode);
-                printf("Period : %d\t ; Pulse : %d\t ; PPM Mode : %d\n",Cmd.PPM_Period,Cmd.PPM_Pulse,Cmd.PPM_Mode);
-                printf("Count[0]  : %d\t ; Count[1] : %d\t ; Count[2] : %d\n",Output_Signal.History[0],Output_Signal.History[2],Output_Signal.History[1]);
-                printf("Fail in %d Counts\n",print_cnt);
+                //PPM_Process_Fnct_Single(&Sys_Flag,&Cmd);
+                // printf("Input Period : %d\t ; Input Pulse : %d\t ; Input PPM Mode : %d\t ; Input Last PPM Mode : %d\n",UnBounce_Signal.Signal_Period,UnBounce_Signal.Signal_Pulse,UnBounce_Signal.PPM_Mode,UnBounce_Signal.Last_PPM_Mode);
+                // printf("Period : %d\t ; Pulse : %d\t ; PPM Mode : %d\n",Cmd.PPM_Period,Cmd.PPM_Pulse,Cmd.PPM_Mode);
+                // printf("Count[0]  : %d\t ; Count[1] : %d\t ; Count[2] : %d\n",Output_Signal.History[0],Output_Signal.History[2],Output_Signal.History[1]);
                 break;
             }
+
+            // if(!(Cmd.PPM_Period != Input_Signal.Signal_Period || Cmd.PPM_Pulse != Input_Signal.Signal_Pulse || Cmd.PPM_Mode != Input_Signal.PPM_Mode ))
+            // {
+            //     printf("Input Period : %d\t ; Input Pulse : %d\t ; Input PPM Mode : %d\t ; Input Last PPM Mode : %d\n",Input_Signal.Signal_Period,Input_Signal.Signal_Pulse,Input_Signal.PPM_Mode,Input_Signal.Last_PPM_Mode);
+            //     printf("Period : %d\t ; Pulse : %d\t ; PPM Mode : %d\n",Cmd.PPM_Period,Cmd.PPM_Pulse,Cmd.PPM_Mode);
+            //     printf("Count[0]  : %d\t ; Count[1] : %d\t ; Count[2] : %d\n",Output_Signal.History[0],Output_Signal.History[2],Output_Signal.History[1]);
+            // }
+            // if(Cmd.PPM_Period != Input_Signal.Signal_Period || Cmd.PPM_Pulse != Input_Signal.Signal_Pulse || Cmd.PPM_Mode != Input_Signal.PPM_Mode ) //
+            // {
+            //     PPM_Process_Fnct_Single(&Sys_Flag,&Cmd);
+            //     printf("Input Period : %d\t ; Input Pulse : %d\t ; Input PPM Mode : %d\t ; Input Last PPM Mode : %d\n",Input_Signal.Signal_Period,Input_Signal.Signal_Pulse,Input_Signal.PPM_Mode,Input_Signal.Last_PPM_Mode);
+            //     printf("Period : %d\t ; Pulse : %d\t ; PPM Mode : %d\n",Cmd.PPM_Period,Cmd.PPM_Pulse,Cmd.PPM_Mode);
+            //     printf("Count[0]  : %d\t ; Count[1] : %d\t ; Count[2] : %d\n",Output_Signal.History[0],Output_Signal.History[2],Output_Signal.History[1]);
+            //     printf("Fail in %d Counts\n",print_cnt);
+            //     break;
+            // }
         }
 
         if(Signal_Order ==-1)
         {
-            Random_Signal_Single(&Input_Signal,&gui);
-        }
+            Hold_On_Count++;
+            if(Hold_On_Count==Hold_Count)
+            {
+                Random_Signal_Single(&Input_Signal,&gui);
+                UnBounce_Signal = Input_Signal;
+                Hold_On_Count = 0;
+            }
+            else 
+            {
+                Signal_Bounce(&Input_Signal);
+            }
+        } 
     }
 
     // while (1)

@@ -1,6 +1,9 @@
 #include "TIM_Input_Capture__UT.h"
 
 Capture_Group PPM_Group;
+#if (Dead_Band_Fnct == On)
+	Dead_Band Dead_Band_Signal;
+#endif
 
 #if (Driving_Mode==Mix)
 	Mix_Mode_Group Mix_Group;
@@ -20,7 +23,7 @@ static int16_t		Target_Angle_Old;
 static int32_t		TargetAngle_Smooth;
 static uint16_t 	PPM_Loss_Cnt;
 static uint8_t 		GUI_Com_Cnt;
-
+static uint8_t 		GUI_Dead_Band;
 
 void PPM_Capture_Parameters_Init(sEscParas_t* EscConfig,System_Flag *Sys_Flag,Signal_Group* Signal)
 {
@@ -28,6 +31,7 @@ void PPM_Capture_Parameters_Init(sEscParas_t* EscConfig,System_Flag *Sys_Flag,Si
 	GUI_Capture_Min = (uint16_t)(ICP_CLK_MHZ * EscConfig->DrvBas.u16PulseLowerTime  - Normal_Signal_Threshold);
 	GUI_Capture_Mid = (uint16_t)(ICP_CLK_MHZ * EscConfig->DrvBas.u16PulseCentralTime);
 	GUI_Capture_Limit = (uint16_t)(ICP_CLK_MHZ * EscConfig->DrvBas.u16PulseHigherTime);
+	GUI_Dead_Band = (uint16_t)EscConfig->DrvBas.u16DeadBand*ICP_CLK_MHZ;
 
 	Signal->GUI_Signal[0]= GUI_Capture_Max;
 	Signal->GUI_Signal[1]= GUI_Capture_Mid;
@@ -69,6 +73,7 @@ void GUI_Cofficient_GeT(GUI* gui)
 	gui->GUI_PPM[0]= GUI_Capture_Max;
 	gui->GUI_PPM[1]= GUI_Capture_Mid;
 	gui->GUI_PPM[2]= GUI_Capture_Min;
+	gui->GUI_Dead_Band = GUI_Dead_Band;
 }
 
 void TIM_Input_Capture_Interrupt_Fnct(System_Flag * Sys_Flag,Signal_Group * Test_Signal)
@@ -250,9 +255,10 @@ void PPM_Process_Fnct_Single(System_Flag *Sys_Flag,Cmd_Group * Cmd)
 			Muti_Range_Detection_Single((Cmd_Group *) Cmd);
 		#endif
 		
-		// #if(Dead_Band_Fnct == On)
-		// 	PPM_Dead_Band_Fnct((System_Flag*) Sys_Flag);
-		// #endif
+		#if(Dead_Band_Fnct == On)
+			//PPM_Dead_Band_Fnct((System_Flag*) Sys_Flag);
+			PPM_Dead_Band((System_Flag *)Sys_Flag, (Cmd_Group *)Cmd);
+		#endif
 
 		// #if (Driving_Mode == Mix)
 		// 	Mix_Function((System_Flag*) Sys_Flag);
@@ -412,69 +418,115 @@ void Muti_Range_Detection_Single(Cmd_Group * Cmd)
 	}
 #endif
 
-// #if(Dead_Band_Fnct == On) 
-// void PPM_Dead_Band_Fnct(System_Flag* Sys_Flag)
-// {
-// 	int16_t temp =0;
-// 	static Bounce_Cmd_Upper,Bounce_Cmd_Mid,Bounce_Cmd_Lower,PPM_Bounce_Cnt;
+#if(Dead_Band_Fnct == On) 
+void PPM_Dead_Band_Fnct(System_Flag* Sys_Flag)
+{
+	int16_t temp =0;
+	static uint16_t Bounce_Cmd_Upper,Bounce_Cmd_Mid,Bounce_Cmd_Lower,PPM_Bounce_Cnt;
 
-// 	temp =  PPM_Group.Capture_Pulse_Width[0] - Bounce_Cmd_Mid;
-// 	temp = Abs(temp);
+	temp =  PPM_Group.Capture_Pulse_Width[0] - Bounce_Cmd_Mid;
+	temp = Abs(temp);
 
 
-// 	if((PPM_Group.Capture_Pulse_Width[0] - Bounce_Cmd_Mid) == 0)
-// 	{	
-// 		PPM_Bounce_Cnt 		= 0;
-// 		Sys_Flag->ICP_Flag &= (~ICP_Dead_Band_Check_Real);
-// 	}
-// 	else if((PPM_Group.Capture_Pulse_Width[0] - Bounce_Cmd_Mid) == 1  && (Bounce_Cmd_Lower == 0))
-// 	{
-// 		PPM_Bounce_Cnt      = 0;
-// 		Sys_Flag->ICP_Flag |= ICP_Dead_Band_Check_Real;
-// 		Bounce_Cmd_Lower    = Bounce_Cmd_Mid;
-// 		Bounce_Cmd_Mid      = PPM_Group.Capture_Pulse_Width[0];
-// 	}	
-// 	else if((Bounce_Cmd_Mid - PPM_Group.Capture_Pulse_Width[0] ) == 1  && (Bounce_Cmd_Lower == 0))
-// 	{
-// 		PPM_Bounce_Cnt       = 0;
-// 		Sys_Flag->ICP_Flag  &= (~ICP_Dead_Band_Check_Real);	
-// 		Bounce_Cmd_Lower     = PPM_Group.Capture_Pulse_Width[0];			   
-// 	}
-// 	else if(((Bounce_Cmd_Mid - PPM_Group.Capture_Pulse_Width[0]) == 2) && (Dead_Band_Cnt==1) && (Bounce_Cmd_Upper== 0) && (Bounce_Cmd_Lower != 0))
-// 	{
-// 		PPM_Bounce_Cnt 		 = 0;
-// 		Sys_Flag->ICP_Flag 	|= ICP_Dead_Band_Check_Real;	
-// 		Bounce_Cmd_Upper 	 = Bounce_Cmd_Mid;
-// 		Bounce_Cmd_Mid 		 = Bounce_Cmd_Lower;
-// 		Bounce_Cmd_Lower 	 = PPM_Group.Capture_Pulse_Width[0];
-// 	}
-// 	else if(((PPM_Group.Capture_Pulse_Width[0] - Bounce_Cmd_Mid) == 1) && (Dead_Band_Cnt==1) && (Bounce_Cmd_Upper == 0) && (Bounce_Cmd_Lower != 0))
-// 	{
-// 		PPM_Bounce_Cnt 		 = 0;
-// 		Sys_Flag->ICP_Flag  &= (~ICP_Dead_Band_Check_Real);
-// 		Bounce_Cmd_Upper 	 = PPM_Group.Capture_Pulse_Width[0];
-// 	}
-// 	else if(temp <= (Dead_Band_Cnt - 1))
-// 	{
-// 		PPM_Bounce_Cnt		 = 0;
-// 		Sys_Flag->ICP_Flag  &= (~ICP_Dead_Band_Check_Real);
-// 	}
-// 	else
-// 	{
-// 		if(PPM_Bounce_Cnt > 3 || temp > 6  || Bounce_Cmd_Lower == 0)
-// 		{ 
-// 			PPM_Bounce_Cnt 		 = 0;
-// 			Sys_Flag->ICP_Flag 	|= ICP_Dead_Band_Check_Real;
-// 			Bounce_Cmd_Upper 	 = 0;
-// 			Bounce_Cmd_Mid 		 = PPM_Group.Capture_Pulse_Width[0];
-// 			Bounce_Cmd_Lower 	 = 0;
-// 		}
-// 		else 
-// 			PPM_Bounce_Cnt++;
-// 	}
-// 	PPM_Group.Capture_Pulse_Width[0] = Bounce_Cmd_Mid;	
-// }
-// #endif
+	if((PPM_Group.Capture_Pulse_Width[0] - Bounce_Cmd_Mid) == 0)
+	{	
+		PPM_Bounce_Cnt 		= 0;
+		Sys_Flag->ICP_Flag &= (~ICP_Dead_Band_Check_Real);
+	}
+	else if((PPM_Group.Capture_Pulse_Width[0] - Bounce_Cmd_Mid) == 1  && (Bounce_Cmd_Lower == 0))
+	{
+		PPM_Bounce_Cnt      = 0;
+		Sys_Flag->ICP_Flag |= ICP_Dead_Band_Check_Real;
+		Bounce_Cmd_Lower    = Bounce_Cmd_Mid;
+		Bounce_Cmd_Mid      = PPM_Group.Capture_Pulse_Width[0];
+	}	
+	else if((Bounce_Cmd_Mid - PPM_Group.Capture_Pulse_Width[0] ) == 1  && (Bounce_Cmd_Lower == 0))
+	{
+		PPM_Bounce_Cnt       = 0;
+		Sys_Flag->ICP_Flag  &= (~ICP_Dead_Band_Check_Real);	
+		Bounce_Cmd_Lower     = PPM_Group.Capture_Pulse_Width[0];			   
+	}
+	else if(((Bounce_Cmd_Mid - PPM_Group.Capture_Pulse_Width[0]) == 2) && (Dead_Band_Cnt==1) && (Bounce_Cmd_Upper== 0) && (Bounce_Cmd_Lower != 0))
+	{
+		PPM_Bounce_Cnt 		 = 0;
+		Sys_Flag->ICP_Flag 	|= ICP_Dead_Band_Check_Real;	
+		Bounce_Cmd_Upper 	 = Bounce_Cmd_Mid;
+		Bounce_Cmd_Mid 		 = Bounce_Cmd_Lower;
+		Bounce_Cmd_Lower 	 = PPM_Group.Capture_Pulse_Width[0];
+	}
+	else if(((PPM_Group.Capture_Pulse_Width[0] - Bounce_Cmd_Mid) == 1) && (Dead_Band_Cnt==1) && (Bounce_Cmd_Upper == 0) && (Bounce_Cmd_Lower != 0))
+	{
+		PPM_Bounce_Cnt 		 = 0;
+		Sys_Flag->ICP_Flag  &= (~ICP_Dead_Band_Check_Real);
+		Bounce_Cmd_Upper 	 = PPM_Group.Capture_Pulse_Width[0];
+	}
+	else if(temp <= (Dead_Band_Cnt - 1))
+	{
+		PPM_Bounce_Cnt		 = 0;
+		Sys_Flag->ICP_Flag  &= (~ICP_Dead_Band_Check_Real);
+	}
+	else
+	{
+		if(PPM_Bounce_Cnt > 3 || temp > 6  || Bounce_Cmd_Lower == 0)
+		{ 
+			PPM_Bounce_Cnt 		 = 0;
+			Sys_Flag->ICP_Flag 	|= ICP_Dead_Band_Check_Real;
+			Bounce_Cmd_Upper 	 = 0;
+			Bounce_Cmd_Mid 		 = PPM_Group.Capture_Pulse_Width[0];
+			Bounce_Cmd_Lower 	 = 0;
+		}
+		else 
+			PPM_Bounce_Cnt++;
+	}
+	PPM_Group.Capture_Pulse_Width[0] = Bounce_Cmd_Mid;	
+}
+
+
+void PPM_Dead_Band(System_Flag *Sys_Flag,Cmd_Group * Cmd)
+{
+	int32_t temp = 0;
+	
+	temp = Cmd->PPM_Pulse - Dead_Band_Signal.dead_band_ans;
+
+	temp = Abs(temp);
+
+	if(temp>5) // If Cmd >= Dead Band , then the cmd pass.
+	{
+		Dead_Band_Signal.dead_band_ans = Cmd->PPM_Pulse;
+		Dead_Band_Signal.dead_band_count = 0;
+		Dead_Band_Signal.dead_band_sum = 0;
+	}
+	else 
+	{
+		Dead_Band_Signal.dead_band_count++;
+		Dead_Band_Signal.dead_band_sum += Cmd->PPM_Pulse;
+		
+		if(Dead_Band_Signal.dead_band_count>=3)
+		{
+			Dead_Band_Signal.dead_band_temp = Dead_Band_Signal.dead_band_sum;
+			Dead_Band_Signal.dead_band_temp=Round_Value(Dead_Band_Signal.dead_band_temp,Dead_Band_Signal.dead_band_count);
+
+			temp = Dead_Band_Signal.dead_band_temp-Dead_Band_Signal.dead_band_ans;
+			temp = Abs(temp);
+
+			if (temp==GUI_Dead_Band)
+			{
+				printf("Input Pulse : %d\t ; Filter Pulse : %d\t ; Hold Pulse : %d\t ; Count : %d\n",Cmd->PPM_Pulse,Dead_Band_Signal.dead_band_temp,Dead_Band_Signal.dead_band_ans,Dead_Band_Signal.dead_band_count);
+				Dead_Band_Signal.dead_band_ans = Dead_Band_Signal.dead_band_temp;
+				Dead_Band_Signal.dead_band_sum = 0;
+				Dead_Band_Signal.dead_band_count = 0;
+			}
+		}
+
+		if(Dead_Band_Signal.dead_band_count==10)
+		{
+			Dead_Band_Signal.dead_band_sum = 0;
+			Dead_Band_Signal.dead_band_count = 0;
+		}
+	}
+	Cmd->PPM_Pulse = Dead_Band_Signal.dead_band_ans;
+}
+#endif
 
 
 // #if(Driving_Mode == MIX)

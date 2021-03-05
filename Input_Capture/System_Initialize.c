@@ -12,7 +12,7 @@ void Parameter_Initial(sEscParas_t *ptr)
 	ptr->DrvBas.u16PulseHigherAng        = 2400;//=2400;	
 	ptr->DrvBas.u16PulseLowerTime        = 900;	
 	ptr->DrvBas.u16PulseLowerAng         = 1200;
-	ptr->DrvBas.u16DeadBand              = 2;//1;
+	ptr->DrvBas.u16DeadBand              = 1;//1;
 	ptr->DrvBas.u16MotDrvLogic           = 1;
 	ptr->DrvBas.u16PtDrvLogic            = 0;
 

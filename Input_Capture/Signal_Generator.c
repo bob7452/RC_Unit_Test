@@ -69,9 +69,9 @@ void Random_Signal_Single(Single_Signal * Signal,GUI *gui)
     int8_t  bounce = 0;
     
     static  uint8_t  temp_Status = 0;
-    static  uint16_t temp = 1500;
-    const   uint16_t top  = 1550;
-    const   uint16_t bot  = 1450;
+    static  uint16_t temp = 3000;
+    const   uint16_t top  = 3100;
+    const   uint16_t bot  = 2900;
 
     Signal->Signal_Period=0;
     Signal->Signal_Pulse =0;
@@ -118,9 +118,9 @@ void Random_Signal_Single(Single_Signal * Signal,GUI *gui)
             Signal->Signal_Period = 40000;
 
             if(temp_Status)
-                ++temp;
+                temp+=gui->GUI_Dead_Band;
             else
-                --temp;
+                temp-=gui->GUI_Dead_Band;
             Signal->Signal_Pulse  = temp;
 
             if(temp >top)
@@ -308,5 +308,19 @@ uint8_t Nosie_Gen(Single_Signal * Input_Signal)
         Nosie_Status=1;
         return Nosie_Status;
     }
+}
+#endif
+
+#if (Dead_Band_Fnct==On)
+void Signal_Bounce  (Single_Signal * Input_Singnal)
+{
+    int8_t Bounce_Value = 0;
+    int8_t TEMP = 0;
+    uint8_t B_Range = (Bounce_Range<<1)+1;
+
+    Bounce_Value = rand()%B_Range;
+    Bounce_Value -= Bounce_Range;
+
+    Input_Singnal->Signal_Pulse += Bounce_Value;
 }
 #endif

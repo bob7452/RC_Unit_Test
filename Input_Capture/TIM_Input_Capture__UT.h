@@ -191,7 +191,8 @@ void PPM_Filter_Fnct_Falling(System_Flag* Sys_Flag,System_Count* Sys_Cnt,uint8_t
 //                                  PPM_Dead_Band_Fnct                                     //
 /*******************************************************************************************/
 #if(Dead_Band_Fnct == On)
-void PPM_Dead_Band_Fnct(void);
+void PPM_Dead_Band_Fnct(System_Flag* Sys_Flag);
+void PPM_Dead_Band(System_Flag *Sys_Flag,Cmd_Group *Cmd);
 #endif 
 
 /*******************************************************************************************/

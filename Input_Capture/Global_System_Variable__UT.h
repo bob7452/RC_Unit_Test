@@ -191,6 +191,13 @@ typedef struct
 	volatile uint16_t PPM_Pulse;
  }Cmd_Group;
  
+ typedef struct
+ {
+	uint8_t  dead_band_count;
+	uint32_t dead_band_sum;
+	uint16_t dead_band_ans;
+	uint32_t dead_band_temp;
+ }Dead_Band;
 /*******************************************************************************************/
 //                                         ADC                                             //
 /*******************************************************************************************/
@@ -298,6 +305,7 @@ typedef struct
 typedef struct
 {
 	uint16_t GUI_PPM[3];
+	uint8_t  GUI_Dead_Band;
 }GUI;
 
 #endif
