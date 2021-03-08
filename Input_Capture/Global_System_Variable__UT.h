@@ -72,6 +72,7 @@ enum System_State_Machine
     Finish,
 	Idle = 0,
 	Busy,
+	Stop,
 };
 
 typedef struct 

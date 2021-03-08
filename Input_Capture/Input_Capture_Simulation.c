@@ -41,6 +41,8 @@ int main (int argc,char* argv[])
     memset(&Output_Signal,0,sizeof(Output_Signal));
     memset(&UnBounce_Signal,0,sizeof(UnBounce_Signal));
 
+    System_Count Sys_Cnt;
+
     GUI gui;
 
     PPM_Capture_Parameters_Init(&EscConfig,&Sys_Flag,&Test_Signal);
@@ -66,7 +68,7 @@ int main (int argc,char* argv[])
 
         if(Output_Signal.Flag)
         {
-            TIM_Input_Capture_Interrupt_Fnct_Single(&Sys_Flag,&Output_Signal);
+            TIM_Input_Capture_Interrupt_Fnct_Single(&Sys_Flag,&Output_Signal,&Sys_Cnt);
             Output_Signal.Flag=0;
         }
 
@@ -77,18 +79,18 @@ int main (int argc,char* argv[])
 
             // if(!(Cmd.PPM_Period != UnBounce_Signal.Signal_Period || Cmd.PPM_Pulse != UnBounce_Signal.Signal_Pulse || Cmd.PPM_Mode != UnBounce_Signal.PPM_Mode ))
             // {
+            // printf("UnBouce Period : %d\t ; UnBouce Pulse : %d\n",UnBounce_Signal.Signal_Period,UnBounce_Signal.Signal_Pulse/2);
+            // printf("Period : %d\t ; Pulse : %d\n",Cmd.PPM_Period,Cmd.PPM_Pulse/2);
+            //  printf("Count[0]  : %d\t ; Count[1] : %d\t ; Count[2] : %d\n",Output_Signal.History[0],Output_Signal.History[2],Output_Signal.History[1]);
+            // }
+            // if(Cmd.PPM_Period != UnBounce_Signal.Signal_Period || Cmd.PPM_Pulse != UnBounce_Signal.Signal_Pulse || Cmd.PPM_Mode != UnBounce_Signal.PPM_Mode ) //
+            // {
+            //     PPM_Process_Fnct_Single(&Sys_Flag,&Cmd);
             //     printf("Input Period : %d\t ; Input Pulse : %d\t ; Input PPM Mode : %d\t ; Input Last PPM Mode : %d\n",UnBounce_Signal.Signal_Period,UnBounce_Signal.Signal_Pulse,UnBounce_Signal.PPM_Mode,UnBounce_Signal.Last_PPM_Mode);
             //     printf("Period : %d\t ; Pulse : %d\t ; PPM Mode : %d\n",Cmd.PPM_Period,Cmd.PPM_Pulse,Cmd.PPM_Mode);
             //     printf("Count[0]  : %d\t ; Count[1] : %d\t ; Count[2] : %d\n",Output_Signal.History[0],Output_Signal.History[2],Output_Signal.History[1]);
+            //     break;
             // }
-            if(Cmd.PPM_Period != UnBounce_Signal.Signal_Period || Cmd.PPM_Pulse != UnBounce_Signal.Signal_Pulse || Cmd.PPM_Mode != UnBounce_Signal.PPM_Mode ) //
-            {
-                //PPM_Process_Fnct_Single(&Sys_Flag,&Cmd);
-                // printf("Input Period : %d\t ; Input Pulse : %d\t ; Input PPM Mode : %d\t ; Input Last PPM Mode : %d\n",UnBounce_Signal.Signal_Period,UnBounce_Signal.Signal_Pulse,UnBounce_Signal.PPM_Mode,UnBounce_Signal.Last_PPM_Mode);
-                // printf("Period : %d\t ; Pulse : %d\t ; PPM Mode : %d\n",Cmd.PPM_Period,Cmd.PPM_Pulse,Cmd.PPM_Mode);
-                // printf("Count[0]  : %d\t ; Count[1] : %d\t ; Count[2] : %d\n",Output_Signal.History[0],Output_Signal.History[2],Output_Signal.History[1]);
-                break;
-            }
 
             // if(!(Cmd.PPM_Period != Input_Signal.Signal_Period || Cmd.PPM_Pulse != Input_Signal.Signal_Pulse || Cmd.PPM_Mode != Input_Signal.PPM_Mode ))
             // {
@@ -107,38 +109,30 @@ int main (int argc,char* argv[])
             // }
         }
 
+        //  Dead Band Test
+        // if(Signal_Order ==-1)
+        // {
+        //     Hold_On_Count++;
+        //     if(Hold_On_Count==Hold_Count)
+        //     {
+        //         Random_Signal_Single(&Input_Signal,&gui);
+        //         UnBounce_Signal = Input_Signal;
+        //         Hold_On_Count = 0;
+        //     }
+        //     else 
+        //     {
+        //         Signal_Bounce(&Input_Signal);
+        //         Input_Signal.Flag=0;
+        //     }
+        // } 
+
         if(Signal_Order ==-1)
         {
-            Hold_On_Count++;
-            if(Hold_On_Count==Hold_Count)
-            {
-                Random_Signal_Single(&Input_Signal,&gui);
-                UnBounce_Signal = Input_Signal;
-                Hold_On_Count = 0;
-            }
-            else 
-            {
-                Signal_Bounce(&Input_Signal);
-            }
+            Random_Signal_Single(&Input_Signal,&gui);
         } 
     }
 
-    // while (1)
-    // {
-    //     Signal_Interrupt(&Test_Signal);
-    //     if (Test_Signal.Signal_Interrupt_Flag==1)
-    //     {
-    //         TIM_Input_Capture_Interrupt_Fnct(&Sys_Flag,&Test_Signal);
-    //         Test_Signal.Signal_Interrupt_Flag=0;
-    //         if((Sys_Flag.ICP_Flag & ICP_Period_Finish)>>1)
-    //         {
-    //             Sys_Flag.ICP_Flag &= (~ICP_Period_Finish);
-    //             PPM_Process_Fnct(&Sys_Flag,&cmd,&Test_Signal);
-    //         }
-    //     }
-    //     if (Test_Signal.Signal_Interrupt_Flag==2)
-    //         break;
-    // }
+
 
   // printf_fnct(&Test_Signal);
     return 0;

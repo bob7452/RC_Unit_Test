@@ -123,11 +123,12 @@ void Random_Signal_Single(Single_Signal * Signal,GUI *gui)
                 temp-=gui->GUI_Dead_Band;
             Signal->Signal_Pulse  = temp;
 
-            if(temp >top)
+            if(temp>top)
                 temp_Status =0;
             if (temp<bot)
                 temp_Status =1;
             Signal->PPM_Mode = 0;
+            Signal->Flag  = 1;
         break;
     }
 
@@ -143,6 +144,7 @@ void Random_Signal_Single(Single_Signal * Signal,GUI *gui)
     }
 
     Signal->Last_PPM_Mode = Signal->PPM_Mode;
+    
 }
 
 void Signal_Interrupt (Signal_Group * Test_Signal)
@@ -312,15 +314,19 @@ uint8_t Nosie_Gen(Single_Signal * Input_Signal)
 #endif
 
 #if (Dead_Band_Fnct==On)
-void Signal_Bounce  (Single_Signal * Input_Singnal)
+void Signal_Bounce  (Single_Signal * Input_Signal)
 {
     int8_t Bounce_Value = 0;
     int8_t TEMP = 0;
     uint8_t B_Range = (Bounce_Range<<1)+1;
+    static uint16_t Original_Signal = 0;
 
+    if(Input_Signal->Flag)
+        Original_Signal = Input_Signal->Signal_Pulse;
+    
     Bounce_Value = rand()%B_Range;
     Bounce_Value -= Bounce_Range;
 
-    Input_Singnal->Signal_Pulse += Bounce_Value;
+    Input_Signal->Signal_Pulse =Original_Signal + Bounce_Value;
 }
 #endif

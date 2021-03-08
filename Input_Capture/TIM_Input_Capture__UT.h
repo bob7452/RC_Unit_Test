@@ -162,8 +162,7 @@
 //                                  Basic_PPM_Functions                                    //
 /*******************************************************************************************/
 void PPM_Capture_Parameters_Init(sEscParas_t* EscConfig,System_Flag *Sys_Flag,Signal_Group* Signal);
-void TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Signal * Signal);
-void TIM_Input_Capture_Interrupt_Fnct(System_Flag * Sys_Flag,Signal_Group * Test_Signal);
+void TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Signal * Signal,System_Count * Sys_Cnt);
 void PPM_Process_Fnct(System_Flag *Sys_Flag,Cmd_Group * Cmd,Signal_Group* Signal);
 void PPM_Process_Fnct_Single(System_Flag *Sys_Flag,Cmd_Group * Cmd);
 void GUI_Cofficient_GeT(GUI* gui);
@@ -180,12 +179,12 @@ void GUI_Cofficient_GeT(GUI* gui);
 /*******************************************************************************************/
 //                                  PPM_Filter_Fnct                                        //
 /*******************************************************************************************/
-#if ((PPM_Filter_Fnct-Muti_Mode_Compile) > 0)
-void PPM_Filter_Fnct(System_Flag* Sys_Flag,System_Count* Sys_Cnt,uint8_t GPIO_Level);
+#if ((PPM_Filter-Muti_Mode_Compile) > 0)
+void PPM_Filter_Fnct(System_Flag* Sys_Flag,System_Count* Sys_Cnt,uint8_t GPIO_Voltage_Level,Single_Signal * Signal);
 #endif
 
 #ifdef PPM_Filter_Fnct_Falling
-void PPM_Filter_Fnct_Falling(System_Flag* Sys_Flag,System_Count* Sys_Cnt,uint8_t GPIO_Level);
+void PPM_Filter_Fnct_Falling(System_Flag* Sys_Flag,System_Count* Sys_Cnt,uint8_t GPIO_Voltage_Level);
 #endif
 /*******************************************************************************************/
 //                                  PPM_Dead_Band_Fnct                                     //

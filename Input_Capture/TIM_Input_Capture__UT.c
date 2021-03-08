@@ -31,7 +31,7 @@ void PPM_Capture_Parameters_Init(sEscParas_t* EscConfig,System_Flag *Sys_Flag,Si
 	GUI_Capture_Min = (uint16_t)(ICP_CLK_MHZ * EscConfig->DrvBas.u16PulseLowerTime  - Normal_Signal_Threshold);
 	GUI_Capture_Mid = (uint16_t)(ICP_CLK_MHZ * EscConfig->DrvBas.u16PulseCentralTime);
 	GUI_Capture_Limit = (uint16_t)(ICP_CLK_MHZ * EscConfig->DrvBas.u16PulseHigherTime);
-	GUI_Dead_Band = (uint16_t)EscConfig->DrvBas.u16DeadBand*ICP_CLK_MHZ;
+	GUI_Dead_Band = (uint16_t) (EscConfig->DrvBas.u16DeadBand*ICP_CLK_MHZ);
 
 	Signal->GUI_Signal[0]= GUI_Capture_Max;
 	Signal->GUI_Signal[1]= GUI_Capture_Mid;
@@ -76,55 +76,8 @@ void GUI_Cofficient_GeT(GUI* gui)
 	gui->GUI_Dead_Band = GUI_Dead_Band;
 }
 
-void TIM_Input_Capture_Interrupt_Fnct(System_Flag * Sys_Flag,Signal_Group * Test_Signal)
-{
-	uint8_t GPIO_Voltage_LeveL = Test_Signal->Signal_Level;
-	static uint8_t Width_Counter = 0;
-	static uint8_t Period_Counter = 0;
 
-    if (((Sys_Flag->ICP_Flag & ICP_Initial_Finish) == false) && (GPIO_Voltage_LeveL))
-	{
-		#if ((PPM_Filter-Muti_Mode_Compile)>0)
-			Sys_Flag->ICP_Flag 	   			   |= ICP_Initial_Finish;
-			PPM_Filter(&Sys_Flag,&Sys_Cnt,GPIO_Voltage_Level);
-			PPM_Group.Capture_Pulse_Width[0]	= PPM_Group.Capture_Mid;
-		#else
-			Sys_Flag->ICP_Flag 	   			   |= ICP_Initial_Finish;
-			PPM_Group.Capture_Raising_Edge[1] 	= Test_Signal->ICP_Counter;
-			PPM_Group.Capture_Both_Edge[0] 	  	= PPM_Group.Capture_Raising_Edge[1];
-			PPM_Group.Capture_Pulse_Width[0]	= PPM_Group.CaptureMid;
-		#endif
-        return;
-	}
-
-	if ((Sys_Flag->ICP_Flag & ICP_Initial_Finish) == true)
-	{	
-		#if ((PPM_Filter-Muti_Mode_Compile)>0)
-			PPM_Filter(&Sys_Flag,&Sys_Cnt,GPIO_Voltage_Level);
-		#else
-
-		if(GPIO_Voltage_LeveL==1) //Rasing Edge
-		{
-			Sys_Flag->ICP_Flag 	 |= ICP_Period_Finish;
-            PPM_Group.Capture_Raising_Edge[0] = Test_Signal->ICP_Counter;
-			PPM_Group.Capture_Both_Edge[0] 	  = PPM_Group.Capture_Raising_Edge[0];
-            PPM_Group.Capture_Period 	  	  = (uint16_t)(PPM_Group.Capture_Raising_Edge[0] -PPM_Group.Capture_Raising_Edge[1]); //us
-			PPM_Group.Capture_Raising_Edge[1] = PPM_Group.Capture_Raising_Edge[0];
-			Test_Signal->Capture_Period[Period_Counter++]=PPM_Group.Capture_Period ;
-        }
-    	else //Falling Edge
-        {
-			Sys_Flag->ICP_Flag 	  |= ICP_Pusle_Width_Finish;
-        	PPM_Group.Capture_Both_Edge[1] 	   = Test_Signal->ICP_Counter;
-            PPM_Group.Capture_Pulse_Width[1]   = PPM_Group.Capture_Pulse_Width[0];
-            PPM_Group.Capture_Pulse_Width[0]   = (uint16_t)(PPM_Group.Capture_Both_Edge[1] - PPM_Group.Capture_Both_Edge[0]);
-			Test_Signal->Capture_Width[Width_Counter++]=PPM_Group.Capture_Pulse_Width[0] ;
-        }
-		#endif
-    }		       
-} 
-
-void  TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Signal * Signal)
+void  TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Signal * Signal,System_Count * Sys_Cnt)
 {
 	uint8_t GPIO_Voltage_LeveL = Signal->Signal_Level;
 	static uint8_t Width_Counter  = 0;
@@ -134,8 +87,8 @@ void  TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Sign
 	{
 		#if ((PPM_Filter-Muti_Mode_Compile)>0)
 			Sys_Flag->ICP_Flag 	   			   |= ICP_Initial_Finish;
-			PPM_Filter(&Sys_Flag,&Sys_Cnt,GPIO_Voltage_Level);
-			PPM_Group.Capture_Pulse_Width[0]	= PPM_Group.Capture_Mid;
+			PPM_Filter_Fnct((System_Flag*)Sys_Flag,(System_Count*)Sys_Cnt,GPIO_Voltage_LeveL,(Single_Signal*) Signal);
+			PPM_Group.Capture_Pulse_Width[0]	= PPM_Group.CaptureMid;
 		#else
 			Sys_Flag->ICP_Flag 	   			   |= ICP_Initial_Finish;
 			PPM_Group.Capture_Raising_Edge[1] 	= Signal->Count;
@@ -148,7 +101,7 @@ void  TIM_Input_Capture_Interrupt_Fnct_Single(System_Flag * Sys_Flag,Single_Sign
 	if ((Sys_Flag->ICP_Flag & ICP_Initial_Finish) == true)
 	{	
 		#if ((PPM_Filter-Muti_Mode_Compile)>0)
-			PPM_Filter(&Sys_Flag,&Sys_Cnt,GPIO_Voltage_Level);
+			PPM_Filter_Fnct((System_Flag*)Sys_Flag,(System_Count*)Sys_Cnt,GPIO_Voltage_LeveL,(Single_Signal*) Signal);
 		#else
 
 		if(GPIO_Voltage_LeveL==1) //Rasing Edge
@@ -490,11 +443,17 @@ void PPM_Dead_Band(System_Flag *Sys_Flag,Cmd_Group * Cmd)
 
 	temp = Abs(temp);
 
-	if(temp>5) // If Cmd >= Dead Band , then the cmd pass.
+	if(temp>5) // If Cmd >> Dead Band , then the cmd pass.
 	{
 		Dead_Band_Signal.dead_band_ans = Cmd->PPM_Pulse;
 		Dead_Band_Signal.dead_band_count = 0;
 		Dead_Band_Signal.dead_band_sum = 0;
+	}
+	else if(temp == GUI_Dead_Band)
+	{
+		Dead_Band_Signal.dead_band_ans = Cmd->PPM_Pulse;
+		Dead_Band_Signal.dead_band_sum = 0;
+		Dead_Band_Signal.dead_band_count = 0;
 	}
 	else 
 	{
@@ -511,17 +470,10 @@ void PPM_Dead_Band(System_Flag *Sys_Flag,Cmd_Group * Cmd)
 
 			if (temp==GUI_Dead_Band)
 			{
-				printf("Input Pulse : %d\t ; Filter Pulse : %d\t ; Hold Pulse : %d\t ; Count : %d\n",Cmd->PPM_Pulse,Dead_Band_Signal.dead_band_temp,Dead_Band_Signal.dead_band_ans,Dead_Band_Signal.dead_band_count);
 				Dead_Band_Signal.dead_band_ans = Dead_Band_Signal.dead_band_temp;
 				Dead_Band_Signal.dead_band_sum = 0;
 				Dead_Band_Signal.dead_band_count = 0;
 			}
-		}
-
-		if(Dead_Band_Signal.dead_band_count==10)
-		{
-			Dead_Band_Signal.dead_band_sum = 0;
-			Dead_Band_Signal.dead_band_count = 0;
 		}
 	}
 	Cmd->PPM_Pulse = Dead_Band_Signal.dead_band_ans;
@@ -553,49 +505,49 @@ void PPM_Dead_Band(System_Flag *Sys_Flag,Cmd_Group * Cmd)
 // #endif
 
  
-// #if ((PPM_Filter-Muti_Mode_Compile)>0)
-// void PPM_Filter_Fnct(System_Flag* Sys_Flag,System_Count* Sys_Cnt,uint8_t GPIO_Level)
-// {
-// 	if (((Sys_Flag->ICP_Flag & ICP_PPM_Soft_Interrupt_Flag)>>7==true))
-// 	{
-// 		Sys_Flag->ICP_Flag |= ICP_Pusle_Width_Finish;
-// 		Sys_Flag->ICP_Flag &= (~ICP_PPM_Soft_Lock_Flag);
-// 		Sys_Flag->ICP_Flag &= (~ICP_PPM_Soft_Interrupt_Flag);
-// 		PPM_Group.Capture_Pulse_Width[1] = PPM_Group.Capture_Pulse_Width[0];
-// 		PPM_Group.Capture_Pulse_Width[0] = (uint16_t)(PPM_Group.Capture_Both_Edge_Value[0]-PPM_Group.Capture_Both_Edge_Value[1]);
-// 		return;
-// 	}
+#if ((PPM_Filter-Muti_Mode_Compile)>0)
+void PPM_Filter_Fnct(System_Flag* Sys_Flag,System_Count* Sys_Cnt,uint8_t GPIO_Voltage_Level,Single_Signal * Signal)
+{
+	if (((Sys_Flag->ICP_Flag & ICP_PPM_Soft_Interrupt_Flag)>>7==true))
+	{
+		Sys_Flag->ICP_Flag |= ICP_Pusle_Width_Finish;
+		Sys_Flag->ICP_Flag &= (~ICP_PPM_Soft_Lock_Flag);
+		Sys_Flag->ICP_Flag &= (~ICP_PPM_Soft_Interrupt_Flag);
+		PPM_Group.Capture_Pulse_Width[1] = PPM_Group.Capture_Pulse_Width[0];
+		PPM_Group.Capture_Pulse_Width[0] = (uint16_t)(PPM_Group.Capture_Both_Edge[0]-PPM_Group.Capture_Both_Edge[1]);
+		return;
+	}
 
-// 	if(GPIO_Voltage_Level) //Rasing Edge
-// 	{
-// 		if(((Sys_Flag->ICP_Flag & ICP_PPM_Filter_Raising_Lock)>>5)==false)
-// 		{
-// 			Sys_Flag->ICP_Flag &= (~ICP_Period_Finish);
-// 			Sys_Flag->ICP_Flag &= (~ICP_Pusle_Width_Finish);
-// 			Sys_Flag->ICP_Flag |= ICP_PPM_Filter_Raising_Lock;
-// 			Sys_Flag->ICP_Flag |= ICP_PPM_Soft_Lock_Flag;
-// 			Sys_Cnt->ICP_Filter_Count = PPM_Filter_Cnt;
-// 			PPM_Group.Capture_Rasing_Edge[0] = TIM_GetCapture1(IC_TIMx);
-// 			PPM_Group.Capture_Both_Edge_Value[0] = PPM_Group.Capture_Rasing_Edge[0];
-// 			return;
-// 		}
+	if(GPIO_Voltage_Level) //Rasing Edge
+	{
+		if(((Sys_Flag->ICP_Flag & ICP_PPM_Filter_Raising_Lock)>>5)==false)
+		{
+			Sys_Flag->ICP_Flag &= (~ICP_Period_Finish);
+			Sys_Flag->ICP_Flag &= (~ICP_Pusle_Width_Finish);
+			Sys_Flag->ICP_Flag |= ICP_PPM_Filter_Raising_Lock;
+			Sys_Flag->ICP_Flag |= ICP_PPM_Soft_Lock_Flag;
+			Sys_Cnt->ICP_Filter_Count = PPM_Filter_Cnt;
+			PPM_Group.Capture_Raising_Edge[0] = Signal->Count;
+			PPM_Group.Capture_Both_Edge[0] = PPM_Group.Capture_Raising_Edge[0];
+			return;
+		}
 
-// 		if(((Sys_Flag->ICP_Flag & ICP_PPM_Filter_Raising_Lock)>>5)==true && ((Sys_Flag->ICP_Flag & ICP_PPM_Soft_Lock_Flag)>>6)==false)
-// 		{
-// 			Sys_Flag->ICP_Flag &= (~ICP_PPM_Filter_Raising_Lock);
-// 			Sys_Flag->ICP_Flag |= ICP_Period_Finish;
-// 			PPM_Group.Capture_Rasing_Edge[1] = TIM_GetCapture1(IC_TIMx);
-// 			PPM_Group.Capture_Period = (uint16_t)(PPM_Group.Capture_Rasing_Edge[0]-PPM_Group.Capture_Rasing_Edge[1]);
-// 			return;
-// 		}
-// 	}
-// 	else //Falling Edge
-// 	{
-// 	  	PPM_Group.Capture_Both_Edge_Value[1] =  TIM_GetCapture1(IC_TIMx);
-// 		return;
-// 	}
-// }
-// #endif
+		if(((Sys_Flag->ICP_Flag & ICP_PPM_Filter_Raising_Lock)>>5)==true && ((Sys_Flag->ICP_Flag & ICP_PPM_Soft_Lock_Flag)>>6)==false)
+		{
+			Sys_Flag->ICP_Flag &= (~ICP_PPM_Filter_Raising_Lock);
+			Sys_Flag->ICP_Flag |= ICP_Period_Finish;
+			PPM_Group.Capture_Raising_Edge[1] = Signal->Count;
+			PPM_Group.Capture_Period = (uint16_t)(PPM_Group.Capture_Raising_Edge[0]-PPM_Group.Capture_Raising_Edge[1]);
+			return;
+		}
+	}
+	else //Falling Edge
+	{
+	  	PPM_Group.Capture_Both_Edge[1] = Signal->Count;
+		return;
+	}
+}
+#endif
 
 // #ifdef PPM_Filter_Fnct_Falling
 // void PPM_Filter_Fnct_Falling(System_Flag* Sys_Flag,System_Count* Sys_Cnt,uint8_t GPIO_Level)

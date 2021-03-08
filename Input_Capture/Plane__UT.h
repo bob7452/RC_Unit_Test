@@ -22,13 +22,13 @@
 /*******************************************************************************************/
 //                                         ICP                                             //
 /*******************************************************************************************/
-#define PPM_Filter Off
+#define PPM_Filter On
 #define PPM_Filter_Cnt 28
 
-#define Dead_Band_Fnct On
+#define Dead_Band_Fnct Off
 
-#define Special_Mode    On
-#define SSR_Mode        On
+#define Special_Mode    Off
+#define SSR_Mode        Off
 
 #define Special_Mode_Hz 833
 #define Special_Mode_Pulse_Min 395 
@@ -65,7 +65,7 @@
 /*******************************************************************************************/
 //                                     Testing_Signal Mode                                 //
 /*******************************************************************************************/
-#define Signal_Noise Off
+#define Signal_Noise On
 #define SSR_Signal On
 #define Special_Signal On
 
@@ -76,6 +76,6 @@
 
 #define  Hold_Count    50
 
-#define  Bounce_Range 1 
+#define  Bounce_Range 1 //ms
 
 #endif
